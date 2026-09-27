@@ -56,13 +56,15 @@
   .brand em { font-style: italic; color: var(--gold); }
   nav.tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
   nav.tabs::-webkit-scrollbar { display: none; }
-  nav.tabs button {
+  nav.tabs button,
+  nav.tabs a {
     background: none; border: none; color: var(--muted);
     font-size: 13.5px; padding: 8px 10px; cursor: pointer;
     white-space: nowrap; border-radius: 6px; transition: color .15s;
+    text-decoration: none;
   }
-  nav.tabs button:hover { color: var(--cream); }
-  nav.tabs button[aria-current="page"] { color: var(--gold); }
+  nav.tabs button:hover, nav.tabs a:hover { color: var(--cream); }
+  nav.tabs button[aria-current="page"], nav.tabs a[aria-current="page"] { color: var(--gold); }
   section.screen { display: none; padding: 40px 0 80px; }
   section.screen.active { display: block; }
   .eyebrow { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
@@ -251,3 +253,20 @@
     .edition-card { flex-direction: column; gap: 8px; }
     .edition-index { display: none; }
   }
+  /* TSX migration additions: router links, YouTube embeds, admin (ported from admin.html) */
+  .yt-pill, .yt-logo { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 20px; background: #FF0000; border: 1px solid #CC0000; border-radius: 4px; padding: 2px; margin-left: 8px; vertical-align: middle; text-decoration: none; }
+  .yt-pill:hover, .yt-logo:hover { background: #E60000; }
+  .yt-pill svg, .yt-logo svg { width: 14px; height: 10px; flex-shrink: 0; }
+  .track-row .yt-logo { margin-left: auto; }
+  .yt-embed { margin-top: 12px; border-radius: 6px; overflow: hidden; aspect-ratio: 16/9; background: #000; display: none; }
+  .yt-embed.open { display: block; }
+  .yt-embed iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+  @media (max-width: 640px) { .admin-grid { grid-template-columns: 1fr; } }
+  .stat-value { font-family: 'Fraunces', serif; font-size: 28px; }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .table-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 28px; }
+  .admin-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .admin-table th { text-align: left; font-size: 12px; color: var(--muted); padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  .admin-table td { padding: 12px 8px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
+  .pill { font-size: 11px; border: 1px solid var(--line-strong); border-radius: 20px; padding: 2px 8px; color: var(--muted); }
