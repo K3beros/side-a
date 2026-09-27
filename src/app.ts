@@ -14,6 +14,7 @@ import { homeRoutes } from './modules/home/home.routes.js';
 import { webhookRoutes } from './modules/webhooks/webhooks.routes.js';
 import { adminRoutes } from './modules/admin/admin.routes.js';
 import { boardRoutes } from './modules/recommendations/board.routes.js';
+import { registerWebFallback } from './plugins/webFallback.js';
 
 export function buildApp() {
   const app = Fastify({
@@ -48,6 +49,9 @@ export function buildApp() {
   void app.register(webhookRoutes, { prefix: '/api' });
   void app.register(adminRoutes, { prefix: '/api' });
   void app.register(boardRoutes, { prefix: '/api' });
+
+  // Static web + BrowserRouter fallback (no-op unless web/dist exists + enabled).
+  registerWebFallback(app);
 
   return app;
 }

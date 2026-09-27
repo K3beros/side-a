@@ -10,6 +10,12 @@ const envSchema = z.object({
   TIX_AFRICA_EVENT_URL: z.string().url().optional(),
   MONNIFY_PAYMENT_BASE_URL: z.string().url().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
+  SERVE_WEB: z.coerce.boolean().optional().default(false),
+  WEB_DIST: z.string().optional(),
+  // Supabase PgBouncer (transaction mode, port 6543) rejects prepared statements.
+  // Set PG_PREPARE=false when DATABASE_URL points at the pooler; leave unset for
+  // direct Postgres connections (local dev, Supabase direct on 5432).
+  PG_PREPARE: z.enum(['true', 'false']).optional().default('true'),
 });
 
 export type Config = z.infer<typeof envSchema>;
