@@ -1,0 +1,35 @@
+# Render Blueprint — side-a (Fastify API + Vite SPA, Postgres on Supabase).
+# Dashboard flow: New -> Blueprint -> select infojadicore-lab/side-a -> Apply.
+# Secrets (DATABASE_URL, ALLOWED_ORIGINS, live payment/OAuth values) are entered
+# in the Render dashboard, not here — `sync: false` marks them as manual.
+
+services:
+  - type: web
+    name: side-a
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build && npm --prefix web install && npm --prefix web run build
+    preDeployCommand: npm run migrate
+    startCommand: node dist/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVE_WEB
+        value: true
+      - key: PG_PREPARE
+        value: false
+      - key: LOG_LEVEL
+        value: info
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: TIX_AFRICA_EVENT_ID
+        sync: false
+      - key: TIX_AFRICA_EVENT_URL
+        sync: false
+      - key: MONNIFY_PAYMENT_BASE_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
