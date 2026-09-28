@@ -3,8 +3,7 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 import { mpaBrowserFallback } from './vite.shared.js';
 
-// Combined local build (both entries). Per-project deploys use
-// vite.public.config.ts (side-a-public) and vite.admin.config.ts (side-a-admin).
+// Public-only entry (index.html). Used by the side-a-public Vercel project.
 export default defineConfig({
   plugins: [react(), mpaBrowserFallback()],
   server: {
@@ -17,7 +16,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        admin: resolve(__dirname, 'admin.html'),
       },
     },
   },

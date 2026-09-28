@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "vite --port 5173",
     "build": "vite build",
+    "build:public": "vite build --config vite.public.config.ts",
+    "build:admin": "vite build --config vite.admin.config.ts",
     "preview": "vite preview --port 4173",
     "typecheck": "tsc --noEmit"
   },
