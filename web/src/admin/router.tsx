@@ -16,6 +16,15 @@ function AdminNotFound(): React.ReactElement {
   );
 }
 
+// Base path for admin routes. Default /admin (backend-served copy and local
+// dev). The dedicated side-a-admin Vercel project serves at domain root, so
+// it sets VITE_ADMIN_BASENAME=/ (normalized to '' below).
+function adminBasename(): string {
+  const raw = (import.meta.env.VITE_ADMIN_BASENAME ?? '/admin').trim();
+  if (raw === '' || raw === '/') return '';
+  return raw.startsWith('/') ? raw : `/${raw}`;
+}
+
 const router = createBrowserRouter(
   [
     {
@@ -33,7 +42,7 @@ const router = createBrowserRouter(
       ],
     },
   ],
-  { basename: '/admin' },
+  { basename: adminBasename() },
 );
 
 export function AdminRouter(): React.ReactElement {

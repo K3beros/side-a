@@ -33,10 +33,17 @@ function ScrollToTop(): null {
   return null;
 }
 
+function adminBase(): string {
+  const raw = (import.meta.env.VITE_ADMIN_BASENAME ?? '/admin').trim();
+  if (raw === '' || raw === '/') return '';
+  return raw.startsWith('/') ? raw : `/${raw}`;
+}
+
 function isActiveTab(to: string, end: boolean | undefined, pathname: string): boolean {
-  const base = '/admin';
-  const full = to ? `${base}/${to}` : base;
-  if (end) return pathname === base || pathname === `${base}/`;
+  const base = adminBase();
+  const home = base === '' ? '/' : base;
+  const full = to ? `${base}/${to}` : home;
+  if (end) return pathname === home;
   return pathname === full || pathname.startsWith(`${full}/`);
 }
 
