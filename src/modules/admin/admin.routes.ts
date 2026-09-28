@@ -6,8 +6,20 @@ import { syncMerchSold } from '../merch/merch.service.js';
 import { syncMerchSchema } from '../merch/merch.schema.js';
 import { pickBoardEntry } from '../recommendations/board.service.js';
 import { sql } from '../../db/index.js';
+import { requireAdmin } from '../../plugins/googleAuth.js';
+import {
+  createMerch,
+  updateMerch,
+  toggleMerchPublish,
+  deleteMerch,
+  listMerch,
+} from '../merch/merch.service.js';
+import { createMerchSchema } from '../merch/merch.schema.js';
 
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
+  // Every /api/admin/* route requires an allowlisted Google identity.
+  app.addHook('preHandler', requireAdmin);
+
   app.post('/admin/sync/editions/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = syncEditionSchema.safeParse(request.body);
@@ -121,5 +133,79 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   app.get('/admin/merch/orders', async () => {
     const orders = await sql`select id, items, total, monnify_link, payment_ref, status, created_at from merch_orders order by created_at desc limit 50`;
     return { orders };
+  });
+
+  // Merch CRUD — new items are drafts (is_published=false); public hides drafts.
+  app.get('/admin/merch', async () => {
+    const items = await listMerch();
+    return { items };
+  });
+
+  app.post('/admin/merch', async (request, reply) => {
+    const parsed = createMerchSchema.safeParse(request.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'ValidationError', issues: parsed.error.issues });
+    const d = parsed.data;
+    try {
+      const item = await createMerch({
+        sku: d.sku,
+        name: d.name,
+        description: d.description,
+        price: d.price,
+        stock: d.stock ?? null,
+        status: d.status,
+        note: d.note,
+        size_options: d.size_options ?? null,
+        monnify_base_url: d.monnify_base_url ? String(d.monnify_base_url) : null,
+      });
+      return reply.status(201).send({ item });
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (msg.includes('duplicate') || msg.includes('unique'))
+        return reply.status(409).send({ error: 'Conflict', message: msg });
+      return reply.status(500).send({ error: msg });
+    }
+  });
+
+  app.patch('/admin/merch/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = createMerchSchema.partial().safeParse(request.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'ValidationError', issues: parsed.error.issues });
+    const d = parsed.data as Record<string, unknown>;
+    try {
+      const item = await updateMerch(id, {
+        sku: d.sku as string | undefined,
+        name: d.name as string | undefined,
+        description: d.description as string | undefined,
+        price: d.price as number | undefined,
+        stock: d.stock as number | null | undefined,
+        status: d.status as string | undefined,
+        note: d.note as string | undefined,
+        size_options: d.size_options as string[] | null | undefined,
+        monnify_base_url: d.monnify_base_url
+          ? String(d.monnify_base_url as string)
+          : (null as unknown as string | null | undefined),
+      });
+      return { item };
+    } catch (e) {
+      return reply.status(404).send({ error: (e as Error).message });
+    }
+  });
+
+  app.patch('/admin/merch/:id/publish', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = z.object({ is_published: z.boolean() }).safeParse(request.body);
+    if (!parsed.success) return reply.status(400).send({ error: 'ValidationError', issues: parsed.error.issues });
+    try {
+      const item = await toggleMerchPublish(id, parsed.data.is_published);
+      return { item };
+    } catch (e) {
+      return reply.status(404).send({ error: (e as Error).message });
+    }
+  });
+
+  app.delete('/admin/merch/:id', async (request) => {
+    const { id } = request.params as { id: string };
+    await deleteMerch(id);
+    return { ok: true };
   });
 }

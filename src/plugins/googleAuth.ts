@@ -1,4 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { OAuth2Client } from 'google-auth-library';
 import { config } from '../config.js';
 
 export type GoogleUser = { googleId: string; email?: string | undefined };
@@ -9,8 +10,15 @@ declare module 'fastify' {
   }
 }
 
-// Minimal Google id_token verification: decode JWT payload without crypto for prototype.
-// In production, verify signature via https://www.googleapis.com/oauth2/v3/certs or google-auth-library.
+let oauthClient: OAuth2Client | null = null;
+
+function getOAuthClient(): OAuth2Client {
+  if (!oauthClient) oauthClient = new OAuth2Client();
+  return oauthClient;
+}
+
+// Legacy unverified decode — dev only (GOOGLE_CLIENT_ID unset). Never trusted
+// for authorization decisions; requireAdmin always demands a verified token.
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
@@ -22,26 +30,81 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
-export async function requireGoogleUser(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+function extractToken(request: FastifyRequest): string | null {
   const header = request.headers.authorization;
-  const token = header?.startsWith('Bearer ') ? header.slice(7) : (request.headers['x-google-id-token'] as string | undefined);
+  if (header?.startsWith('Bearer ')) return header.slice(7);
+  const viaHeader = request.headers['x-google-id-token'];
+  return typeof viaHeader === 'string' && viaHeader.length > 0 ? viaHeader : null;
+}
+
+async function verifyGoogleToken(token: string): Promise<GoogleUser | null> {
+  // Production path: cryptographic verification against Google certs.
+  if (config.GOOGLE_CLIENT_ID) {
+    try {
+      const ticket = await getOAuthClient().verifyIdToken({
+        idToken: token,
+        audience: config.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      if (!payload?.sub) return null;
+      return { googleId: payload.sub, email: payload.email ?? undefined };
+    } catch {
+      return null;
+    }
+  }
+  // Dev fallback (GOOGLE_CLIENT_ID unset): unverified decode, else raw token id.
+  const payload = decodeJwtPayload(token);
+  if (payload && typeof payload.sub === 'string') {
+    return { googleId: payload.sub, email: payload.email as string | undefined };
+  }
+  return { googleId: token };
+}
+
+function adminAllowlist(): string[] {
+  return (config.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export async function requireGoogleUser(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const token = extractToken(request);
   if (!token) {
     void reply.status(401).send({ error: 'Unauthorized', message: 'Google sign-in required' });
     return;
   }
-
-  // If GOOGLE_CLIENT_ID is set, check aud claim matches.
-  const payload = decodeJwtPayload(token);
-  if (payload && typeof payload.sub === 'string') {
-    const aud = payload.aud as string | undefined;
-    if (config.GOOGLE_CLIENT_ID && aud !== config.GOOGLE_CLIENT_ID) {
-      void reply.status(401).send({ error: 'Unauthorized', message: 'Invalid audience' });
-      return;
-    }
-    request.googleUser = { googleId: payload.sub as string, email: payload.email as string | undefined };
+  const user = await verifyGoogleToken(token);
+  if (!user) {
+    void reply.status(401).send({ error: 'Unauthorized', message: 'Invalid Google token' });
     return;
   }
+  request.googleUser = user;
+}
 
-  // Fallback: treat raw token as googleId for dev/manual testing
-  request.googleUser = { googleId: token };
+// Admin gate: verified Google identity AND allowlisted email/id.
+// - ADMIN_EMAILS unset + production: deny everything (fail closed).
+// - ADMIN_EMAILS unset + non-production: allow (local dev ergonomics), warn once.
+let warnedOpenAdmin = false;
+
+export async function requireAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  await requireGoogleUser(request, reply);
+  if (reply.sent) return;
+  const allow = adminAllowlist();
+  if (allow.length === 0) {
+    if (config.NODE_ENV === 'production') {
+      void reply.status(403).send({ error: 'Forbidden', message: 'Admin allowlist not configured' });
+      return;
+    }
+    if (!warnedOpenAdmin) {
+      warnedOpenAdmin = true;
+      request.log.warn('ADMIN_EMAILS unset — admin routes open in non-production mode');
+    }
+    return;
+  }
+  const user = request.googleUser as GoogleUser;
+  const email = (user.email ?? '').toLowerCase();
+  if (!allow.includes(email) && !allow.includes(user.googleId)) {
+    void reply.status(403).send({ error: 'Forbidden', message: 'Not an admin account' });
+    return;
+  }
 }

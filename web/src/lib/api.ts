@@ -19,10 +19,17 @@ export function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+// Every /api/admin/* backend route requires an allowlisted Google identity,
+// so the token is attached automatically there (mirrors the server hook).
+function needsAuth(path: string, opts?: { auth?: boolean }): boolean {
+  if (opts?.auth !== undefined) return opts.auth;
+  return path.startsWith('/api/admin/');
+}
+
 export async function api<T>(path: string, opts?: RequestInit & { auth?: boolean }): Promise<ApiResult<T>> {
   const headers: Record<string, string> = {};
   if (opts?.body) headers['Content-Type'] = 'application/json';
-  if (opts?.auth) Object.assign(headers, authHeaders());
+  if (needsAuth(path, opts)) Object.assign(headers, authHeaders());
   const res = await fetch(path, { ...opts, headers: { ...headers, ...(opts?.headers ?? {}) } });
   const body = (await res.json()) as T;
   return { ok: res.ok, status: res.status, body };

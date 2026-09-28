@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { listUpdates, createUpdate, updateUpdate, deleteUpdate } from './updates.service.js';
+import { requireAdmin } from '../../plugins/googleAuth.js';
 
 const updateSchema = z.object({
   date: z.string().min(1),
@@ -18,7 +19,7 @@ export async function updateRoutes(app: FastifyInstance): Promise<void> {
     return { updates };
   });
 
-  app.post('/admin/updates', async (request, reply) => {
+  app.post('/admin/updates', { preHandler: [requireAdmin] }, async (request, reply) => {
     const parsed = updateSchema.safeParse(request.body);
     if (!parsed.success) return reply.status(400).send({ error: 'ValidationError', issues: parsed.error.issues });
     const u = await createUpdate({
@@ -32,7 +33,7 @@ export async function updateRoutes(app: FastifyInstance): Promise<void> {
     return reply.status(201).send({ update: u });
   });
 
-  app.patch('/admin/updates/:id', async (request, reply) => {
+  app.patch('/admin/updates/:id', { preHandler: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = updateSchema.partial().safeParse(request.body);
     if (!parsed.success) return reply.status(400).send({ error: 'ValidationError', issues: parsed.error.issues });
@@ -45,7 +46,7 @@ export async function updateRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
-  app.delete('/admin/updates/:id', async (request) => {
+  app.delete('/admin/updates/:id', { preHandler: [requireAdmin] }, async (request) => {
     const { id } = request.params as { id: string };
     await deleteUpdate(id);
     return { ok: true };

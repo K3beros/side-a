@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router';
+import { AUTH_EVENT, GoogleSignIn } from './GoogleSignIn.js';
 
 const TABS = [
   { to: '', label: 'Dashboard', end: true },
@@ -41,6 +42,26 @@ function isActiveTab(to: string, end: boolean | undefined, pathname: string): bo
 
 export function AdminShell(): React.ReactElement {
   const { pathname } = useLocation();
+  const [signedIn, setSignedIn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('side-a-google-id-token') !== null;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const sync = (): void => {
+      try {
+        setSignedIn(localStorage.getItem('side-a-google-id-token') !== null);
+      } catch {
+        setSignedIn(false);
+      }
+    };
+    window.addEventListener(AUTH_EVENT, sync);
+    return () => window.removeEventListener(AUTH_EVENT, sync);
+  }, []);
+
   return (
     <>
       <LegacyHashRedirect />
@@ -57,9 +78,16 @@ export function AdminShell(): React.ReactElement {
               </Link>
             ))}
           </nav>
+          <GoogleSignIn />
         </div>
       </header>
       <div className="wrap">
+        {!signedIn ? (
+          <p className="board-empty" style={{ marginTop: 12 }}>
+            Admin actions require Google sign-in with an allowlisted account — data below is read-only until you sign
+            in.
+          </p>
+        ) : null}
         <Outlet />
         <footer className="foot">
           Side A Admin — same plum/gold system as public (`--plum-950`, `--gold`, Fraunces/Space Grotesk, 760px).

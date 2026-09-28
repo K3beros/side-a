@@ -4,7 +4,7 @@ import { listMerch, createMerchOrder } from './merch.service.js';
 
 export async function merchRoutes(app: FastifyInstance): Promise<void> {
   app.get('/merch', async () => {
-    const items = await listMerch();
+    const items = await listMerch({ publishedOnly: true });
     return { items };
   });
 

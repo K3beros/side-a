@@ -10,6 +10,9 @@ const envSchema = z.object({
   TIX_AFRICA_EVENT_URL: z.string().url().optional(),
   MONNIFY_PAYMENT_BASE_URL: z.string().url().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
+  // Comma-separated allowlist for /api/admin/* (verified Google email or sub).
+  // Unset + production = deny all; unset + dev = open with a warning.
+  ADMIN_EMAILS: z.string().optional(),
   SERVE_WEB: z.coerce.boolean().optional().default(false),
   WEB_DIST: z.string().optional(),
   // Supabase PgBouncer (transaction mode, port 6543) rejects prepared statements.
