@@ -1,5 +1,7 @@
-// Programmatic Vercel config — runs at build time, so each project gets routing
-// for its own entry while sharing this repo and root (`web/`).
+// Programmatic Vercel config — evaluated at build time, so each project gets
+// routing for its own entry while sharing this repo and root (`web/`).
+// NOTE: must default-export a plain object (not a function): Vercel's loader
+// message-passes the export and cannot serialize functions.
 //
 // Per-project env (Vercel dashboard):
 //   side-a-public: nothing (defaults to the public shell)
@@ -12,27 +14,25 @@
 declare const process: { env: Record<string, string | undefined> };
 
 const BACKEND = 'https://side-a-9g63.onrender.com';
+const SHELL =
+  (process.env.SITE_ENTRY ?? '').trim().toLowerCase() === 'admin' ? '/admin.html' : '/index.html';
 
 interface Rewrite {
   source: string;
   destination: string;
 }
 
-export default function config(): { rewrites: Rewrite[] } {
-  const isAdmin = (process.env.SITE_ENTRY ?? '').trim().toLowerCase() === 'admin';
-  const shell = isAdmin ? '/admin.html' : '/index.html';
-  return {
-    rewrites: [
-      { source: '/api/:path*', destination: `${BACKEND}/api/:path*` },
-      { source: '/health', destination: `${BACKEND}/health` },
-      // Admin shell reachable by direct file URL on either project
-      // (404s on the public project, which has no admin.html — intended).
-      { source: '/admin', destination: '/admin.html' },
-      { source: '/admin/:path*', destination: '/admin.html' },
-      // SPA fallback for this project's shell (root explicit; deep links via
-      // lookahead so /assets/* always stays on the filesystem).
-      { source: '/', destination: shell },
-      { source: '/((?!assets/).*)', destination: shell },
-    ],
-  };
-}
+const rewrites: Rewrite[] = [
+  { source: '/api/:path*', destination: `${BACKEND}/api/:path*` },
+  { source: '/health', destination: `${BACKEND}/health` },
+  // Admin shell reachable by direct file URL on either project
+  // (404s on the public project, which has no admin.html — intended).
+  { source: '/admin', destination: '/admin.html' },
+  { source: '/admin/:path*', destination: '/admin.html' },
+  // SPA fallback for this project's shell (root explicit; deep links via
+  // lookahead so /assets/* always stays on the filesystem).
+  { source: '/', destination: SHELL },
+  { source: '/((?!assets/).*)', destination: SHELL },
+];
+
+export default { rewrites };
