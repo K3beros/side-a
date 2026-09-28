@@ -8,7 +8,7 @@ services:
     name: side-a
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build && npm --prefix web install && npm --prefix web run build
+    buildCommand: npm install --include=dev && npm run build && npm --prefix web install --include=dev && npm --prefix web run build
     preDeployCommand: npm run migrate
     startCommand: node dist/server.js
     healthCheckPath: /health
@@ -32,4 +32,6 @@ services:
       - key: MONNIFY_PAYMENT_BASE_URL
         sync: false
       - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: ADMIN_EMAILS
         sync: false
